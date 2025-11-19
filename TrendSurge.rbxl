@@ -1,0 +1,1028 @@
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" version="4">
+<Meta name="ExplicitAutoJoints">true</Meta>
+<External>null</External>
+<Item class="DataModel" referent="RBX0">
+<Properties>
+<string name="Name">DataModel</string>
+</Properties>
+<Item class="Workspace" referent="RBX1">
+<Properties>
+<string name="Name">Workspace</string>
+<bool name="StreamingEnabled">false</bool>
+<float name="Gravity">196.2</float>
+</Properties>
+<Item class="Folder" referent="RBX2">
+<Properties>
+<string name="Name">LobbySpawns</string>
+</Properties>
+<Item class="Part" referent="RBX3">
+<Properties>
+<string name="Name">SpawnPad</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">true</bool>
+<Vector3 name="Size">8 1 8</Vector3>
+<CoordinateFrame name="CFrame">1 0 0 0 1 0 0 0 1 0 5 0</CoordinateFrame>
+<token name="Material">Plastic</token>
+<token name="TopSurface">Smooth</token>
+<token name="BottomSurface">Smooth</token>
+<int name="BrickColor">194</int>
+</Properties>
+</Item>
+</Item>
+</Item>
+<Item class="Players" referent="RBX4">
+<Properties>
+<string name="Name">Players</string>
+</Properties>
+</Item>
+<Item class="Lighting" referent="RBX5">
+<Properties>
+<string name="Name">Lighting</string>
+</Properties>
+</Item>
+<Item class="StarterGui" referent="RBX6">
+<Properties>
+<string name="Name">StarterGui</string>
+</Properties>
+</Item>
+<Item class="StarterPack" referent="RBX7">
+<Properties>
+<string name="Name">StarterPack</string>
+</Properties>
+</Item>
+<Item class="StarterPlayer" referent="RBX8">
+<Properties>
+<string name="Name">StarterPlayer</string>
+</Properties>
+<Item class="StarterPlayerScripts" referent="RBX9">
+<Properties>
+<string name="Name">StarterPlayerScripts</string>
+</Properties>
+<Item class="LocalScript" referent="RBX10">
+<Properties>
+<string name="Name">ClientUI</string>
+<ProtectedString name="Source"><![CDATA[local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local ChallengeDefinitions = require(ReplicatedStorage:WaitForChild("ChallengeDefinitions"))
+
+local remotesFolder = ReplicatedStorage:WaitForChild("Remotes")
+local trendingEvent = remotesFolder:WaitForChild("TrendingUpdated")
+local challengeEvent = remotesFolder:WaitForChild("ChallengeState")
+local rewardEvent = remotesFolder:WaitForChild("RewardGranted")
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "TrendSurgeUI"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+local trendingFrame = Instance.new("Frame")
+trendingFrame.Name = "TrendingFrame"
+trendingFrame.Size = UDim2.new(0, 300, 0, 120)
+trendingFrame.Position = UDim2.new(0, 20, 0, 20)
+trendingFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+trendingFrame.BackgroundTransparency = 0.2
+trendingFrame.Parent = screenGui
+
+local trendingTitle = Instance.new("TextLabel")
+trendingTitle.Size = UDim2.new(1, -20, 0, 30)
+trendingTitle.Position = UDim2.new(0, 10, 0, 10)
+trendingTitle.Text = "Trending Challenge"
+trendingTitle.Font = Enum.Font.GothamBold
+trendingTitle.TextSize = 22
+trendingTitle.TextColor3 = Color3.new(1, 1, 1)
+trendingTitle.BackgroundTransparency = 1
+trendingTitle.Parent = trendingFrame
+
+local trendingBody = Instance.new("TextLabel")
+trendingBody.Size = UDim2.new(1, -20, 0, 60)
+trendingBody.Position = UDim2.new(0, 10, 0, 45)
+trendingBody.TextWrapped = true
+trendingBody.Font = Enum.Font.Gotham
+trendingBody.TextSize = 18
+trendingBody.TextColor3 = Color3.new(0.9, 0.9, 0.9)
+trendingBody.BackgroundTransparency = 1
+trendingBody.Text = "Waiting for rotation..."
+trendingBody.Parent = trendingFrame
+
+local rewardFrame = Instance.new("Frame")
+rewardFrame.Name = "RewardFrame"
+rewardFrame.Size = UDim2.new(0, 280, 0, 100)
+rewardFrame.Position = UDim2.new(1, -300, 0, 30)
+rewardFrame.BackgroundColor3 = Color3.fromRGB(30, 10, 60)
+rewardFrame.BackgroundTransparency = 0.3
+rewardFrame.Visible = false
+rewardFrame.Parent = screenGui
+
+local rewardLabel = Instance.new("TextLabel")
+rewardLabel.Size = UDim2.new(1, -20, 1, -20)
+rewardLabel.Position = UDim2.new(0, 10, 0, 10)
+rewardLabel.TextWrapped = true
+rewardLabel.Font = Enum.Font.GothamSemibold
+rewardLabel.TextSize = 20
+rewardLabel.TextColor3 = Color3.fromRGB(255, 223, 125)
+rewardLabel.BackgroundTransparency = 1
+rewardLabel.Parent = rewardFrame
+
+local activeChallengeInstructions = {}
+local currentChallengeKey = nil
+local lastTrendingTitle = "Trending Challenge"
+local lastTrendingMessage = "Waiting for rotation..."
+
+local function setTrendingText(title, body)
+    trendingTitle.Text = title
+    trendingBody.Text = body
+    lastTrendingTitle = title
+    lastTrendingMessage = body
+end
+
+local function formatTrendingBody(displayName, description)
+    return string.format("%s\n%s", displayName or "", description or "")
+end
+
+local function updateTrendingUI(payload)
+    if type(payload) ~= "table" then
+        local definition = ChallengeDefinitions[payload]
+        if definition then
+            setTrendingText("Trending Challenge", formatTrendingBody(definition.displayName, definition.description))
+        else
+            setTrendingText("Trending Challenge", "New rotation starting soon...")
+        end
+        return
+    end
+
+    if payload.status == "Intermission" then
+        setTrendingText("Intermission", payload.description or "New rotation starting soon...")
+        activeChallengeInstructions = {}
+        currentChallengeKey = nil
+        return
+    end
+
+    local definition = ChallengeDefinitions[payload.key]
+    local displayName = payload.displayName or (definition and definition.displayName) or "Trending Challenge"
+    local description = payload.description or (definition and definition.description) or ""
+    setTrendingText("Trending Challenge", formatTrendingBody(displayName, description))
+end
+
+local function updateChallengeState(state)
+    if state.status == "Active" then
+        currentChallengeKey = state.challenge
+        local definition = ChallengeDefinitions[currentChallengeKey]
+        activeChallengeInstructions = definition and definition.instructions or state.instructions or {}
+        local displayName = state.displayName or (definition and definition.displayName) or currentChallengeKey
+        local timeRemaining = state.timeRemaining or state.duration or 0
+        setTrendingText(displayName, string.format("Time Remaining: %ss", timeRemaining))
+    elseif state.status == "Results" then
+        local definition = ChallengeDefinitions[state.challenge]
+        local displayName = state.displayName or (definition and definition.displayName) or state.challenge
+        local lines = {string.format("%s Results", displayName)}
+        if state.finishers and #state.finishers > 0 then
+            for _, entry in ipairs(state.finishers) do
+                table.insert(lines, string.format("%d) %s - %ss", entry.placement, entry.playerName, entry.finishTime))
+            end
+        else
+            table.insert(lines, "No winners this round - warm up those skills!")
+        end
+        setTrendingText("Results", table.concat(lines, "\n"))
+        activeChallengeInstructions = {}
+    end
+end
+
+local function presentReward(data)
+    rewardFrame.Visible = true
+    rewardLabel.Text = string.format(
+        "+%d Clout\n+%d Followers\nTotals: %d Clout / %d Followers",
+        data.clout,
+        data.followers,
+        data.totals.clout,
+        data.totals.followers
+    )
+
+    task.delay(5, function()
+        rewardFrame.Visible = false
+    end)
+end
+
+trendingEvent.OnClientEvent:Connect(updateTrendingUI)
+challengeEvent.OnClientEvent:Connect(updateChallengeState)
+rewardEvent.OnClientEvent:Connect(presentReward)
+
+-- Tooltip instructions when players press H
+local UserInputService = game:GetService("UserInputService")
+
+UserInputService.InputBegan:Connect(function(input, processed)
+    if processed then
+        return
+    end
+    if input.KeyCode == Enum.KeyCode.H then
+        local previousTitle = lastTrendingTitle
+        local previousMessage = lastTrendingMessage
+        if #activeChallengeInstructions &gt; 0 then
+            setTrendingText("How to Play", table.concat(activeChallengeInstructions, "\n"))
+            task.delay(5, function()
+                setTrendingText(previousTitle, previousMessage)
+            end)
+        else
+            setTrendingText("How to Play", "Stay tuned for the next viral challenge!")
+            task.delay(5, function()
+                setTrendingText(previousTitle, previousMessage)
+            end)
+        end
+    end
+end)]]></ProtectedString>
+</Properties>
+</Item>
+</Item>
+</Item>
+<Item class="ReplicatedStorage" referent="RBX11">
+<Properties>
+<string name="Name">ReplicatedStorage</string>
+</Properties>
+<Item class="Folder" referent="RBX12">
+<Properties>
+<string name="Name">Remotes</string>
+</Properties>
+<Item class="RemoteEvent" referent="RBX13">
+<Properties>
+<string name="Name">TrendingUpdated</string>
+</Properties>
+</Item>
+<Item class="RemoteEvent" referent="RBX14">
+<Properties>
+<string name="Name">ChallengeState</string>
+</Properties>
+</Item>
+<Item class="RemoteEvent" referent="RBX15">
+<Properties>
+<string name="Name">RewardGranted</string>
+</Properties>
+</Item>
+</Item>
+<Item class="ModuleScript" referent="RBX16">
+<Properties>
+<string name="Name">ChallengeDefinitions</string>
+<ProtectedString name="Source"><![CDATA[local ChallengeDefinitions = {
+    FloorIsLava = {
+        displayName = "Floor is Lava",
+        description = "Hop across disappearing platforms before the lava rises!",
+        duration = 90,
+        difficulty = 1.2,
+        rewardMultiplier = 1.3,
+        arenaModelName = "FloorIsLava",
+        spawnFolderName = "Spawns",
+        goalFolderName = "GoalPads",
+        hazardFolderName = "Hazards",
+        instructions = {
+            "Platforms disappear faster as time goes on.",
+            "Bonus clout for staying mobile and emoting mid-air.",
+        },
+    },
+    ViralParkour = {
+        displayName = "Viral Parkour",
+        description = "Race across a short-form obstacle course inspired by trending clips.",
+        duration = 75,
+        difficulty = 1.0,
+        rewardMultiplier = 1.1,
+        arenaModelName = "ViralParkour",
+        spawnFolderName = "Spawns",
+        goalFolderName = "GoalPads",
+        hazardFolderName = "Hazards",
+        instructions = {
+            "Use speed pads to outpace rivals.",
+            "Triggers highlight replay for the first finisher.",
+        },
+    },
+    DanceDuel = {
+        displayName = "Dance Duel",
+        description = "Follow emote prompts to rack up combo multipliers in a rhythm showdown.",
+        duration = 60,
+        difficulty = 1.4,
+        rewardMultiplier = 1.5,
+        arenaModelName = "DanceDuel",
+        spawnFolderName = "Spawns",
+        goalFolderName = "GoalPads",
+        hazardFolderName = "Hazards",
+        instructions = {
+            "Perfect combos increase trend contribution.",
+            "Trigger special emotes for bonus hype.",
+        },
+    },
+}
+
+return ChallengeDefinitions]]></ProtectedString>
+</Properties>
+</Item>
+</Item>
+<Item class="ServerScriptService" referent="RBX17">
+<Properties>
+<string name="Name">ServerScriptService</string>
+</Properties>
+<Item class="ModuleScript" referent="RBX18">
+<Properties>
+<string name="Name">ChallengeArenaController</string>
+<ProtectedString name="Source"><![CDATA[local Players = game:GetService("Players")
+local ServerStorage = game:GetService("ServerStorage")
+
+local ArenaController = {}
+ArenaController.__index = ArenaController
+
+local function getOrCreateFolder(parent, name)
+    local folder = parent:FindFirstChild(name)
+    if not folder then
+        folder = Instance.new("Folder")
+        folder.Name = name
+        folder.Parent = parent
+    end
+    return folder
+end
+
+function ArenaController.new(challengeKey, definition)
+    local self = setmetatable({}, ArenaController)
+    self.challengeKey = challengeKey
+    self.definition = definition
+    self.template = nil
+    self.arenaModel = nil
+    self.connections = {}
+    self.startTime = 0
+    self.completions = {}
+    self.participants = {}
+    return self
+end
+
+function ArenaController:loadTemplate()
+    if self.template then
+        return self.template
+    end
+
+    local arenasFolder = ServerStorage:FindFirstChild("Arenas")
+    if not arenasFolder then
+        error("ServerStorage.Arenas folder is missing. Import the arena models before starting the server.")
+    end
+
+    local modelName = self.definition.arenaModelName or self.challengeKey
+    local model = arenasFolder:FindFirstChild(modelName)
+    if not model then
+        error(string.format("Missing arena model '%s' inside ServerStorage.Arenas", modelName))
+    end
+
+    self.template = model
+    return self.template
+end
+
+function ArenaController:spawnArena()
+    local template = self:loadTemplate()
+    self.arenaModel = template:Clone()
+    self.arenaModel.Name = string.format("%sArena", self.challengeKey)
+
+    local workspaceFolder = getOrCreateFolder(workspace, "ActiveArenas")
+    self.arenaModel.Parent = workspaceFolder
+
+    self.startTime = os.clock()
+    self:registerParticipants()
+    self:wireGoals()
+    self:wireHazards()
+end
+
+function ArenaController:getSpawnLocations()
+    if not self.arenaModel then
+        return {}
+    end
+
+    local folderName = self.definition.spawnFolderName or "Spawns"
+    local spawnFolder = self.arenaModel:FindFirstChild(folderName)
+    local spawns = {}
+    if spawnFolder then
+        for _, child in spawnFolder:GetDescendants() do
+            if child:IsA("BasePart") then
+                table.insert(spawns, child.CFrame)
+            end
+        end
+    end
+    return spawns
+end
+
+function ArenaController:registerParticipants()
+    for _, player in ipairs(Players:GetPlayers()) do
+        self:addParticipant(player)
+    end
+end
+
+function ArenaController:addParticipant(player)
+    self.participants[player] = {
+        finished = false,
+        finishTime = nil,
+    }
+end
+
+function ArenaController:removeParticipant(player)
+    self.participants[player] = nil
+end
+
+function ArenaController:handleFinish(player)
+    local participant = self.participants[player]
+    if not participant or participant.finished then
+        return
+    end
+
+    participant.finished = true
+    participant.finishTime = os.clock() - self.startTime
+    self.completions[player] = participant.finishTime
+end
+
+function ArenaController:wireGoals()
+    local folderName = self.definition.goalFolderName or "GoalPads"
+    local goalFolder = self.arenaModel:FindFirstChild(folderName)
+    if not goalFolder then
+        return
+    end
+
+    for _, descendant in goalFolder:GetDescendants() do
+        if descendant:IsA("BasePart") then
+            table.insert(self.connections, descendant.Touched:Connect(function(hit)
+                local character = hit.Parent
+                if not character then
+                    return
+                end
+                local player = Players:GetPlayerFromCharacter(character)
+                if not player then
+                    return
+                end
+                self:handleFinish(player)
+            end))
+        end
+    end
+end
+
+function ArenaController:wireHazards()
+    local folderName = self.definition.hazardFolderName or "Hazards"
+    local hazardFolder = self.arenaModel:FindFirstChild(folderName)
+    if not hazardFolder then
+        return
+    end
+
+    for _, descendant in hazardFolder:GetDescendants() do
+        if descendant:IsA("BasePart") then
+            table.insert(self.connections, descendant.Touched:Connect(function(hit)
+                local character = hit.Parent
+                if not character then
+                    return
+                end
+                local humanoid = character:FindFirstChildWhichIsA("Humanoid")
+                if humanoid then
+                    humanoid.Health = 0
+                end
+            end))
+        end
+    end
+end
+
+function ArenaController:getResults()
+    local ordered = {}
+    for player, finishTime in pairs(self.completions) do
+        table.insert(ordered, {player = player, finishTime = finishTime})
+    end
+    table.sort(ordered, function(a, b)
+        return a.finishTime &lt; b.finishTime
+    end)
+
+    local finishers = {}
+    for placement, data in ipairs(ordered) do
+        finishers[placement] = {
+            player = data.player,
+            finishTime = data.finishTime,
+        }
+    end
+
+    local nonFinishers = {}
+    for player, info in pairs(self.participants) do
+        if not info.finished and player and player.Parent then
+            table.insert(nonFinishers, player)
+        end
+    end
+
+    return finishers, nonFinishers
+end
+
+function ArenaController:destroy()
+    for _, connection in ipairs(self.connections) do
+        connection:Disconnect()
+    end
+    self.connections = {}
+
+    if self.arenaModel then
+        self.arenaModel:Destroy()
+        self.arenaModel = nil
+    end
+end
+
+return ArenaController]]></ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="RBX19">
+<Properties>
+<string name="Name">RewardService</string>
+<ProtectedString name="Source"><![CDATA[local DataStoreService = game:GetService("DataStoreService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local remotesFolder = ReplicatedStorage:WaitForChild("Remotes")
+local rewardEvent = remotesFolder:WaitForChild("RewardGranted")
+
+local RewardService = {}
+RewardService.__index = RewardService
+
+local profileStore = DataStoreService:GetDataStore("TrendSurgeProfiles")
+local playerProfiles = {}
+local playerStreaks = {}
+
+local function createLeaderstats(player, profile)
+    local leaderstats = player:FindFirstChild("leaderstats")
+    if not leaderstats then
+        leaderstats = Instance.new("Folder")
+        leaderstats.Name = "leaderstats"
+        leaderstats.Parent = player
+    end
+
+    local function getOrCreateValue(name)
+        local value = leaderstats:FindFirstChild(name)
+        if not value then
+            value = Instance.new("IntValue")
+            value.Name = name
+            value.Parent = leaderstats
+        end
+        return value
+    end
+
+    getOrCreateValue("Clout").Value = profile.Clout
+    getOrCreateValue("Followers").Value = profile.Followers
+end
+
+local function loadProfile(player)
+    local success, data = pcall(function()
+        return profileStore:GetAsync(player.UserId)
+    end)
+
+    if success and data then
+        playerProfiles[player] = data
+    else
+        playerProfiles[player] = {
+            Clout = 0,
+            Followers = 0,
+            LifetimeChallenges = 0,
+        }
+    end
+
+    playerStreaks[player] = playerStreaks[player] or 0
+    createLeaderstats(player, playerProfiles[player])
+end
+
+local function saveProfile(player)
+    local profile = playerProfiles[player]
+    if not profile then
+        return
+    end
+
+    pcall(function()
+        profileStore:SetAsync(player.UserId, profile)
+    end)
+end
+
+function RewardService.AdjustStreak(player, didFinish)
+    if didFinish then
+        playerStreaks[player] = (playerStreaks[player] or 0) + 1
+    else
+        playerStreaks[player] = 0
+    end
+    return playerStreaks[player]
+end
+
+function RewardService.GetStreak(player)
+    return playerStreaks[player] or 0
+end
+
+local function calculateRewards(result)
+    local definition = result.definition
+    if not definition then
+        return 0, 0
+    end
+
+    local base = result.didFinish and 25 or 10
+    local placementBonus = 0
+    if result.didFinish then
+        placementBonus = math.max(0, (10 - (result.placement or 10))) * 5
+    end
+    local streakMultiplier = 1 + (result.streak or 0) * 0.05
+    local difficultyMultiplier = definition.difficulty or 1
+    local rewardMultiplier = definition.rewardMultiplier or 1
+
+    local clout = math.floor((base + placementBonus) * streakMultiplier * rewardMultiplier)
+    local followers = math.floor(clout * 0.2 * difficultyMultiplier)
+
+    return clout, followers
+end
+
+function RewardService.AwardPlayer(player, result)
+    local profile = playerProfiles[player]
+    if not profile then
+        return
+    end
+
+    local clout, followers = calculateRewards(result)
+    profile.Clout += clout
+    profile.Followers += followers
+    profile.LifetimeChallenges += 1
+
+    local leaderstats = player:FindFirstChild("leaderstats")
+    if leaderstats then
+        local cloutValue = leaderstats:FindFirstChild("Clout")
+        local followersValue = leaderstats:FindFirstChild("Followers")
+        if cloutValue then
+            cloutValue.Value = profile.Clout
+        end
+        if followersValue then
+            followersValue.Value = profile.Followers
+        end
+    end
+
+    rewardEvent:FireClient(player, {
+        clout = clout,
+        followers = followers,
+        totals = {
+            clout = profile.Clout,
+            followers = profile.Followers,
+        },
+    })
+end
+
+function RewardService.ClearPlayer(player)
+    saveProfile(player)
+    playerProfiles[player] = nil
+    playerStreaks[player] = nil
+end
+
+function RewardService.Init()
+    Players.PlayerAdded:Connect(loadProfile)
+    Players.PlayerRemoving:Connect(function(player)
+        RewardService.ClearPlayer(player)
+    end)
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        task.spawn(loadProfile, player)
+    end
+
+    game:BindToClose(function()
+        for player, _ in pairs(playerProfiles) do
+            saveProfile(player)
+        end
+    end)
+end
+
+return RewardService]]></ProtectedString>
+</Properties>
+</Item>
+<Item class="Script" referent="RBX20">
+<Properties>
+<string name="Name">RewardBootstrap</string>
+<ProtectedString name="Source"><![CDATA[local RewardService = require(script.Parent:WaitForChild("RewardService"))
+RewardService.Init()]]></ProtectedString>
+</Properties>
+</Item>
+<Item class="Script" referent="RBX21">
+<Properties>
+<string name="Name">RemotesSetup</string>
+<ProtectedString name="Source"><![CDATA[local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local remotesFolder = ReplicatedStorage:FindFirstChild("Remotes")
+if not remotesFolder then
+    remotesFolder = Instance.new("Folder")
+    remotesFolder.Name = "Remotes"
+    remotesFolder.Parent = ReplicatedStorage
+end
+
+local remoteClasses = {
+    TrendingUpdated = "RemoteEvent",
+    ChallengeState = "RemoteEvent",
+    RewardGranted = "RemoteEvent",
+}
+
+for name, className in pairs(remoteClasses) do
+    if not remotesFolder:FindFirstChild(name) then
+        local remote = Instance.new(className)
+        remote.Name = name
+        remote.Parent = remotesFolder
+    end
+end]]></ProtectedString>
+</Properties>
+</Item>
+<Item class="Script" referent="RBX22">
+<Properties>
+<string name="Name">ViralChallengeManager</string>
+<ProtectedString name="Source"><![CDATA[local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local ServerScriptService = game:GetService("ServerScriptService")
+
+local ChallengeDefinitions = require(ReplicatedStorage:WaitForChild("ChallengeDefinitions"))
+local RewardService = require(ServerScriptService:WaitForChild("RewardService"))
+local ChallengeArenaController = require(ServerScriptService:WaitForChild("ChallengeArenaController"))
+
+local remotesFolder = ReplicatedStorage:WaitForChild("Remotes")
+local trendingEvent = remotesFolder:WaitForChild("TrendingUpdated")
+local challengeEvent = remotesFolder:WaitForChild("ChallengeState")
+
+local CURRENT_CHALLENGE = nil
+local CURRENT_ARENA = nil
+local NEXT_ROTATION = 0
+local CHALLENGE_END_TIME = 0
+local ACTIVE_UPDATE = false
+local characterConnections = {}
+
+local INTERMISSION_DURATION = 20
+
+local function broadcastTrending(challengeName)
+    local definition = challengeName and ChallengeDefinitions[challengeName] or nil
+    local payload = {
+        key = challengeName,
+        status = challengeName and "Active" or "Intermission",
+    }
+
+    if definition then
+        payload.displayName = definition.displayName
+        payload.description = definition.description
+    else
+        payload.displayName = "Intermission"
+        payload.description = "Next viral challenge loading..."
+    end
+
+    trendingEvent:FireAllClients(payload)
+end
+
+local function buildWeightedChallengeList()
+    local weightedList = {}
+    for key, definition in pairs(ChallengeDefinitions) do
+        local baseWeight = definition.difficulty &gt; 1 and 1 / definition.difficulty or 1
+        local rewardWeight = definition.rewardMultiplier or 1
+        local weight = baseWeight * rewardWeight
+        table.insert(weightedList, {name = key, weight = weight})
+    end
+    return weightedList
+end
+
+local function selectChallenge()
+    local weightedList = buildWeightedChallengeList()
+    local totalWeight = 0
+    for _, entry in ipairs(weightedList) do
+        totalWeight += entry.weight
+    end
+
+    local randomValue = math.random() * totalWeight
+    local accumulator = 0
+    for _, entry in ipairs(weightedList) do
+        accumulator += entry.weight
+        if randomValue &lt;= accumulator then
+            return entry.name
+        end
+    end
+
+    return weightedList[1] and weightedList[1].name or nil
+end
+
+local function ensureCharacter(player)
+    local character = player.Character
+    if not character then
+        player:LoadCharacter()
+        character = player.Character or player.CharacterAdded:Wait()
+    end
+    local root = character:FindFirstChild("HumanoidRootPart")
+    if not root then
+        root = character:WaitForChild("HumanoidRootPart")
+    end
+    return character, root
+end
+
+local function getLobbySpawns()
+    local lobbyFolder = workspace:FindFirstChild("LobbySpawns")
+    local cframes = {}
+    if lobbyFolder then
+        for _, child in lobbyFolder:GetDescendants() do
+            if child:IsA("BasePart") then
+                table.insert(cframes, child.CFrame)
+            end
+        end
+    end
+
+    if #cframes == 0 then
+        table.insert(cframes, CFrame.new(0, 10, 0))
+    end
+
+    return cframes
+end
+
+local function teleportPlayerToCFrame(player, cframe)
+    local _, root = ensureCharacter(player)
+    root.CFrame = cframe + Vector3.new(0, 3, 0)
+end
+
+local function teleportPlayers(cframes)
+    if #cframes == 0 then
+        return
+    end
+
+    local players = Players:GetPlayers()
+    for index, player in ipairs(players) do
+        local spawnCFrame = cframes[((index - 1) % #cframes) + 1]
+        teleportPlayerToCFrame(player, spawnCFrame)
+    end
+end
+
+local function updateChallengeState(stateTable)
+    challengeEvent:FireAllClients(stateTable)
+end
+
+local function sendResults(challengeName, definition, finishers)
+    local payload = {
+        status = "Results",
+        challenge = challengeName,
+        displayName = definition.displayName,
+        finishers = {},
+    }
+
+    for placement, entry in ipairs(finishers) do
+        table.insert(payload.finishers, {
+            placement = placement,
+            playerName = entry.player.DisplayName,
+            finishTime = math.floor(entry.finishTime),
+        })
+    end
+
+    updateChallengeState(payload)
+end
+
+local function returnPlayersToLobby()
+    teleportPlayers(getLobbySpawns())
+end
+
+local function concludeChallenge(challengeName, definition)
+    if CURRENT_CHALLENGE ~= challengeName then
+        return
+    end
+
+    ACTIVE_UPDATE = false
+
+    local finishers, nonFinishers = {}, {}
+    if CURRENT_ARENA then
+        finishers, nonFinishers = CURRENT_ARENA:getResults()
+        CURRENT_ARENA:destroy()
+        CURRENT_ARENA = nil
+    end
+
+    for placement, entry in ipairs(finishers) do
+        local player = entry.player
+        if player and player.Parent then
+            local streak = RewardService.AdjustStreak(player, true)
+            RewardService.AwardPlayer(player, {
+                challenge = challengeName,
+                definition = definition,
+                placement = placement,
+                streak = streak,
+                didFinish = true,
+            })
+        end
+    end
+
+    for _, player in ipairs(nonFinishers) do
+        if player and player.Parent then
+            local streak = RewardService.AdjustStreak(player, false)
+            RewardService.AwardPlayer(player, {
+                challenge = challengeName,
+                definition = definition,
+                placement = #finishers + 1,
+                streak = streak,
+                didFinish = false,
+            })
+        end
+    end
+
+    sendResults(challengeName, definition, finishers)
+    returnPlayersToLobby()
+
+    CURRENT_CHALLENGE = nil
+    CHALLENGE_END_TIME = 0
+    NEXT_ROTATION = os.clock() + INTERMISSION_DURATION
+    broadcastTrending(nil)
+end
+
+local function runCountdown(challengeName, definition)
+    while ACTIVE_UPDATE and CURRENT_CHALLENGE == challengeName do
+        local remaining = math.max(0, math.ceil(CHALLENGE_END_TIME - os.clock()))
+        updateChallengeState({
+            status = "Active",
+            challenge = challengeName,
+            displayName = definition.displayName,
+            timeRemaining = remaining,
+            instructions = definition.instructions,
+        })
+        task.wait(1)
+    end
+end
+
+local function startChallenge(challengeName)
+    local definition = ChallengeDefinitions[challengeName]
+    if not definition then
+        warn("Missing challenge definition for", challengeName)
+        return
+    end
+
+    CURRENT_CHALLENGE = challengeName
+    broadcastTrending(challengeName)
+
+    CURRENT_ARENA = ChallengeArenaController.new(challengeName, definition)
+    CURRENT_ARENA:spawnArena()
+
+    local spawnLocations = CURRENT_ARENA:getSpawnLocations()
+    teleportPlayers(spawnLocations)
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        CURRENT_ARENA:addParticipant(player)
+    end
+
+    ACTIVE_UPDATE = true
+    CHALLENGE_END_TIME = os.clock() + definition.duration
+    task.delay(definition.duration, function()
+        concludeChallenge(challengeName, definition)
+    end)
+
+    task.spawn(runCountdown, challengeName, definition)
+end
+
+local function runScheduler()
+    if CURRENT_CHALLENGE == nil and os.clock() &gt;= NEXT_ROTATION then
+        local challengeName = selectChallenge()
+        if challengeName then
+            startChallenge(challengeName)
+        end
+    end
+end
+
+Players.PlayerAdded:Connect(function(player)
+    if characterConnections[player] then
+        characterConnections[player]:Disconnect()
+    end
+
+    characterConnections[player] = player.CharacterAdded:Connect(function()
+        task.defer(function()
+            local arena = CURRENT_ARENA
+            if CURRENT_CHALLENGE and arena then
+                local spawns = arena:getSpawnLocations()
+                if #spawns &gt; 0 then
+                    local spawn = spawns[((player.UserId % #spawns) + 1)]
+                    teleportPlayerToCFrame(player, spawn)
+                    return
+                end
+            end
+
+            local lobbySpawns = getLobbySpawns()
+            teleportPlayerToCFrame(player, lobbySpawns[1])
+        end)
+    end)
+
+    if CURRENT_ARENA then
+        CURRENT_ARENA:addParticipant(player)
+    end
+    if CURRENT_CHALLENGE then
+        broadcastTrending(CURRENT_CHALLENGE)
+    end
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    if characterConnections[player] then
+        characterConnections[player]:Disconnect()
+        characterConnections[player] = nil
+    end
+
+    if CURRENT_ARENA then
+        CURRENT_ARENA:removeParticipant(player)
+    end
+end)
+
+NEXT_ROTATION = os.clock() + INTERMISSION_DURATION
+broadcastTrending(nil)
+RunService.Heartbeat:Connect(runScheduler)]]></ProtectedString>
+</Properties>
+</Item>
+</Item>
+<Item class="ServerStorage" referent="RBX23">
+<Properties>
+<string name="Name">ServerStorage</string>
+</Properties>
+<Item class="Folder" referent="RBX24">
+<Properties>
+<string name="Name">Arenas</string>
+</Properties>
+</Item>
+</Item>
+</Item>
+</roblox>
